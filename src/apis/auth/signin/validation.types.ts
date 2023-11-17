@@ -1,5 +1,5 @@
 export type SigninBody = {
   userName: string;
-  password: String;
-  isAdmin: Boolean;
+  password: string;
+  isAdmin: boolean;
 };

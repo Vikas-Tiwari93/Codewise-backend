@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 
 import { SERVER_ERROR } from "../../../utilities/constants/http-constants";
 
@@ -9,8 +9,13 @@ import { ValidatedRequest } from "express-joi-validation";
 import { SignupAdminRequestSchema } from "./signup.validation";
 import { getRecordDetails } from "../../../utilities/db/dbwrapper";
 import { generateJwtTokens } from "../../../utilities/tokenGenerators/jwt";
-
-const secretKey = "codewise";
+import { handleImageUpload } from "../../../services/uploadsDownloads/imageUpload/image";
+import { secretKey } from "../../../utilities/constants/keys";
+import {
+  makeDirectories,
+  path,
+} from "../../../utilities/initialservices/initialServices";
+import { encryptPassword } from "../../../utilities/otherMiddlewares/password";
 export const SignupControllerAdmin = async (
   req: ValidatedRequest<SignupAdminRequestSchema>,
   res: Response
@@ -28,7 +33,7 @@ export const SignupControllerAdmin = async (
   } = req.body;
 
   const { authToken, refreshToken } = generateJwtTokens(
-    { userName, password, isAdmin: true },
+    { userName, isAdmin: true },
     secretKey
   );
 
@@ -37,7 +42,7 @@ export const SignupControllerAdmin = async (
     email,
     name,
     userName,
-    password,
+    password: await encryptPassword(password),
     organisationName,
     organisationId,
     attachment,
@@ -48,11 +53,9 @@ export const SignupControllerAdmin = async (
   try {
     const isAdminRegistered = await getRecordDetails(Admin, {
       userName,
-      password,
     });
     if (!isAdminRegistered.hasData) {
       const admin = await createSingleRecord(Admin, payload);
-      console.log({ admin });
 
       res.json({ message: "User signed up successfully" });
     } else {
@@ -79,7 +82,7 @@ export const SignupControllerStudent = async (
   } = req.body;
 
   const { authToken, refreshToken } = generateJwtTokens(
-    { userName, password, isAdmin: true },
+    { userName, isAdmin: true },
     secretKey
   );
 
@@ -88,7 +91,7 @@ export const SignupControllerStudent = async (
     email,
     name,
     userName,
-    password,
+    password: await encryptPassword(password),
     organisationName,
     organisationId,
     attachment,
@@ -112,5 +115,23 @@ export const SignupControllerStudent = async (
     }
   } catch (error) {
     res.status(SERVER_ERROR).json({ error: "Error signing up user" });
+  }
+};
+
+export const uploadsController = async (req: Request, res: Response) => {
+  const { uploadFile, saveAs } = handleImageUpload(req);
+
+  if (uploadFile && saveAs) {
+    uploadFile?.mv(`${path}+${saveAs}`, function (err: unknown) {
+      if (err) {
+        return res.status(500).send(err);
+      }
+      return res.status(200).json({ status: "uploaded", saveAs });
+    });
+  }
+
+  try {
+  } catch (error) {
+    res.status(SERVER_ERROR).json({ error: "Error in uploading" });
   }
 };

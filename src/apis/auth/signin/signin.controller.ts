@@ -13,8 +13,14 @@ import { ValidatedRequest } from "express-joi-validation";
 import { SigninRequestSchema } from "./signin.validation";
 import { Admin } from "../../../utilities/schemas/admin";
 import { Student } from "../../../utilities/schemas/student";
-
-const secretKey = "codewise";
+import {
+  generateJwtTokens,
+  isJWTExpired,
+  updatingJwtTokensInDb,
+  verifyJWT,
+} from "../../../utilities/tokenGenerators/jwt";
+import { secretKey } from "../../../utilities/constants/keys";
+import { isPasswordVerified } from "../../../utilities/otherMiddlewares/password";
 
 export const SigninController = async (
   req: ValidatedRequest<SigninRequestSchema>,
@@ -22,31 +28,56 @@ export const SigninController = async (
 ) => {
   const { userName, password, isAdmin } = req.body;
 
-  const query = { userName, password };
   try {
-    const authToken = jwt.sign({ userName, password, isAdmin }, secretKey, {
-      expiresIn: "15m",
+    const { authToken, refreshToken } = generateJwtTokens(
+      { userName, isAdmin },
+      secretKey
+    );
+
+    const user = await updatingJwtTokensInDb(authToken, {
+      userName,
+      isAdmin,
     });
 
-    const refreshToken = jwt.sign({ userName, password, isAdmin }, secretKey, {
-      expiresIn: "7d",
-    });
-    const payload = { authToken: authToken };
-    if (isAdmin) {
-      const user = await updateRecord(Admin, query, payload);
-      if (!user.hasData) {
-        return res.status(SUCCESS).json({ message: "Invalid credentials" });
-      }
+    if (
+      user?.hasData &&
+      (await isPasswordVerified(password, user?.resultSet?.password))
+    ) {
+      return res
+        .status(200)
+        .json({ authToken, refreshToken, message: "SignIn Complete" });
     }
-    if (!isAdmin) {
-      const user = await updateRecord(Student, query, payload);
-      if (!user.hasData) {
-        return res.status(SUCCESS).json({ message: "Invalid credentials" });
-      }
-    }
-
-    res.json({ authToken, refreshToken, message: "SignIn Complete" });
+    return res.status(404).json({ message: "Invalid Credentials" });
   } catch (error) {
     res.status(SERVER_ERROR).json({ error: "Error signing in user" });
+  }
+};
+
+export const generateAuthTokenController = async (
+  req: Request,
+  res: Response
+) => {
+  const { refreshToken } = req.body;
+  try {
+    const user = verifyJWT(refreshToken, secretKey, res);
+
+    if (user && isJWTExpired(refreshToken)) {
+      const querypayload = { userName: user.userName };
+      const identifyUser = user.isAdmin
+        ? await getRecordDetails(Admin, querypayload)
+        : await getRecordDetails(Student, querypayload);
+      if (!identifyUser) {
+        return res.status(404).send("User not found");
+      }
+      const { authToken, refreshToken } = generateJwtTokens(user, secretKey);
+      await updatingJwtTokensInDb(authToken, user);
+
+      res
+        .status(200)
+        .send({ authToken, refreshToken, message: "authToken sent" });
+      return res.status(404).send("Refresh token expired");
+    }
+  } catch (error) {
+    res.status(403).send("Authentication failed");
   }
 };

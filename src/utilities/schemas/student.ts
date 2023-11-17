@@ -1,5 +1,5 @@
 import mongoose, { Model } from "mongoose";
-import { createAssignmentSchema } from "./assignments";
+import { assignmentSchema } from "./assignments";
 
 const createStudentSchema = new mongoose.Schema(
   {
@@ -14,7 +14,7 @@ const createStudentSchema = new mongoose.Schema(
     isAgreement: { type: Boolean, required: true },
     isActive: { type: Boolean, required: true },
     authToken: { type: String, required: true },
-    Assignments: [createAssignmentSchema],
+    Assignments: [assignmentSchema],
   },
   {
     timestamps: true,

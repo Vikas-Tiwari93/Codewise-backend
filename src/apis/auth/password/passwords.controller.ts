@@ -11,6 +11,7 @@ import { OTPMap } from "../../../utilities/schemas/otpMap";
 import { Student } from "../../../utilities/schemas/student";
 import { SERVER_ERROR } from "../../../utilities/constants/http-constants";
 import { deleteManyRecord } from "../../../utilities/db/dblayer";
+import { encryptPassword } from "../../../utilities/otherMiddlewares/password";
 const OTPGenerator = require("otp-generator");
 type EmailRequest = {
   email: string;
@@ -47,9 +48,11 @@ export const emailOtp = async (req: Request, res: Response) => {
 
       await sendEmail(email, "OTP Confirmation", emailBody);
       const result = await createSingleRecord(OTPMap, pyload);
-      res.json({ result, message: "Email sent please check ur email" });
+      res
+        .status(200)
+        .json({ result, message: "Email sent please check ur email" });
     } else {
-      res.json({ message: "No user found for the email provided" });
+      res.status(404).json({ message: "No user found for the email provided" });
     }
   } catch (error) {
     res.status(SERVER_ERROR).json({ error: "Error generating Email" });
@@ -58,13 +61,13 @@ export const emailOtp = async (req: Request, res: Response) => {
 export const otpValidate = async (req: Request, res: Response) => {
   const { userName, otp } = <OTPValidate>(<unknown>req.body);
   try {
-    const user = await getRecordDetails(OTPMap, { userName });
+    const user = await getRecordDetails(OTPMap, { userName, otp });
     if (user.hasData) {
       const result = user.resultSet;
-      res.json({ result, message: "successful OTP validation" });
+      res.status(200).json({ result, message: "successful OTP validation" });
       await deleteManyRecord(OTPMap, { userName });
     } else {
-      res.json({ message: "No user found" });
+      res.status(404).json({ message: "No user found for this OTP" });
     }
   } catch (error) {
     res.status(SERVER_ERROR).json({ error: "Error in OTP validation" });
@@ -72,17 +75,26 @@ export const otpValidate = async (req: Request, res: Response) => {
 };
 export const changePassword = async (req: Request, res: Response) => {
   const { userName, password, isAdmin } = <Changepassword>(<unknown>req.body);
+  let hashedPassword = await encryptPassword(password);
   try {
     if (isAdmin) {
-      const result = await updateRecord(Admin, { userName }, { password });
-      result
-        ? res.json({ result, message: "Password changed" })
-        : res.json({ message: "Coundn't find User" });
+      const result = await updateRecord(
+        Admin,
+        { userName },
+        { hashedPassword }
+      );
+      result.hasData
+        ? res.status(200).json({ result, message: "Password changed" })
+        : res.status(404).json({ message: "Coundn't find User" });
     } else {
-      const result = await updateRecord(Student, { userName }, { password });
-      result
-        ? res.json({ result, message: "Password changed" })
-        : res.json({ message: "Coundn't find User" });
+      const result = await updateRecord(
+        Student,
+        { userName },
+        { hashedPassword }
+      );
+      result.hasData
+        ? res.status(202).json({ result, message: "Password changed" })
+        : res.status(404).json({ message: "Coundn't find User" });
     }
   } catch (error) {
     res.status(SERVER_ERROR).json({ error: "Error in password change" });
