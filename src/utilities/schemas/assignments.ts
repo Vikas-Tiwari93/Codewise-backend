@@ -2,11 +2,11 @@ import mongoose from "mongoose";
 
 export const assignmentSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true },
-    description: { type: String, required: true },
-    assignedTo: { type: String, required: true },
-    deadline: { type: String, required: true },
-    attachments: [{ type: String }],
+    adminId: { type: String, required: true },
+    className: { type: String, required: true },
+    assignmentId: { type: String, required: true },
+    submissionAt: { type: String, required: true },
+    expiredAt: { type: String, required: true },
   },
   { timestamps: true }
 );
