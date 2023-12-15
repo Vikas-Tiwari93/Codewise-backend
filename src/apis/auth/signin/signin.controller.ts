@@ -43,9 +43,12 @@ export const SigninController = async (
       user?.hasData &&
       (await isPasswordVerified(password, user?.resultSet?.password))
     ) {
-      return res
-        .status(200)
-        .json({ authToken, refreshToken, message: "SignIn Complete" });
+      return res.status(200).json({
+        isAdmin: user?.resultSet.isAdmin,
+        authToken,
+        refreshToken,
+        message: "SignIn Complete",
+      });
     }
     return res.status(404).json({ message: "Invalid Credentials" });
   } catch (error) {
