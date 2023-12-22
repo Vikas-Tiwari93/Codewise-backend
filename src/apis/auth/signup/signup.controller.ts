@@ -16,6 +16,7 @@ import {
   path,
 } from "../../../utilities/initialservices/initialServices";
 import { encryptPassword } from "../../../utilities/otherMiddlewares/password";
+import { Users } from "../../../utilities/schemas/users";
 export const SignupControllerAdmin = async (
   req: ValidatedRequest<SignupAdminRequestSchema>,
   res: Response
@@ -28,14 +29,15 @@ export const SignupControllerAdmin = async (
     organisationId,
     email,
     attachment,
-    isAgreement,
+
     userName,
+    role,
   } = req.body;
 
-  const { authToken, refreshToken } = generateJwtTokens(
-    { userName, isAdmin: true },
-    secretKey
-  );
+  const { authToken, refreshToken } = generateJwtTokens({
+    userName,
+    role: "admin",
+  });
 
   const name = firstName + " " + lastName;
   const payload = {
@@ -43,21 +45,21 @@ export const SignupControllerAdmin = async (
     name,
     userName,
     password: await encryptPassword(password),
-    organisationName,
-    organisationId,
+    role,
+    organisation: [{ orgName: organisationName, orgId: organisationId }],
     attachment,
-    isAgreement,
     isActive: true,
+    isDeleted: false,
     authToken,
   };
   try {
-    const isAdminRegistered = await getRecordDetails(Admin, {
+    const isAdminRegistered = await getRecordDetails(Users, {
       userName,
     });
     if (!isAdminRegistered.hasData) {
-      const admin = await createSingleRecord(Admin, payload);
+      const admin = await createSingleRecord(Users, payload);
 
-      res.json({ message: "User signed up successfully" });
+      res.json({ admin, message: "User signed up successfully" });
     } else {
       res.json({ message: "Already have a user with these credentials" });
     }
@@ -77,14 +79,14 @@ export const SignupControllerStudent = async (
     organisationId,
     email,
     attachment,
-    isAgreement,
     userName,
+    role,
   } = req.body;
 
-  const { authToken, refreshToken } = generateJwtTokens(
-    { userName, isAdmin: true },
-    secretKey
-  );
+  const { authToken, refreshToken } = generateJwtTokens({
+    userName,
+    role: "student",
+  });
 
   const name = firstName + " " + lastName;
   const payload = {
@@ -92,21 +94,22 @@ export const SignupControllerStudent = async (
     name,
     userName,
     password: await encryptPassword(password),
-    organisationName,
-    organisationId,
+    role,
+    organisation: [{ orgName: organisationName, orgId: organisationId }],
     attachment,
-    isAgreement,
+
     isActive: true,
+    isDeleted: false,
     authToken,
   };
   try {
-    const isStudentRegistered = await getRecordDetails(Student, {
+    const isStudentRegistered = await getRecordDetails(Users, {
       userName,
       password,
     });
     console.log(isStudentRegistered);
     if (!isStudentRegistered.hasData) {
-      const admin = await createSingleRecord(Student, payload);
+      const admin = await createSingleRecord(Users, payload);
       console.log({ admin });
 
       res.json({ message: "User signed up successfully" });

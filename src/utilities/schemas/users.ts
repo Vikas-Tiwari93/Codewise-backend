@@ -14,17 +14,18 @@ const userSchema = new mongoose.Schema(
       },
     ],
 
-    dob: { type: String, required: true },
-    isAgreement: { type: Boolean, required: true },
+    dob: { type: String },
+    isAgreement: { type: Boolean },
     isActive: { type: Boolean, required: true },
     isDeleted: { type: Boolean, required: true },
     authToken: { type: String, required: true },
-    securityQn: { type: String, required: true },
+    securityQn: { type: String },
+    securityAns: { type: String },
     devices: [
       {
-        ipAddress: { type: String, required: true },
-        deviceModel: { type: String, required: true },
-        os: { type: String, required: true },
+        ipAddress: { type: String },
+        deviceModel: { type: String },
+        os: { type: String },
       },
     ],
   },
@@ -33,4 +34,4 @@ const userSchema = new mongoose.Schema(
   }
 );
 userSchema.index({ userName: 1 }, { unique: true });
-export const Users = mongoose.model("Student", userSchema);
+export const Users = mongoose.model("Users", userSchema);

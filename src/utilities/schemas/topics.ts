@@ -14,4 +14,4 @@ const createTopicsSchema = new mongoose.Schema(
   }
 );
 createTopicsSchema.index({ classId: 1 }, { unique: true });
-export const Student = mongoose.model("Student", createTopicsSchema);
+export const createTopics = mongoose.model("Topics", createTopicsSchema);

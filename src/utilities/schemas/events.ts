@@ -3,18 +3,12 @@ import { assignmentSchema } from "./assignments";
 
 const createStudentSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
-    email: { type: String, required: true },
-    userName: { type: String, required: true },
-    password: { type: String, required: true },
-    isAdmin: { type: Boolean, required: true, default: false },
-    organisationId: { type: String, required: true },
-    organisationName: { type: String, required: true },
-    attachment: { type: String, required: true },
-    isAgreement: { type: Boolean, required: true },
-    isActive: { type: Boolean, required: true },
-    authToken: { type: String, required: true },
-    Assignments: [assignmentSchema],
+    userId: { type: String, required: true },
+    classes: [{ type: String, required: true }],
+    type: { type: String, required: true },
+    details: { type: String, required: true },
+    date: { type: Date, required: true },
+    isCancelled: { type: Boolean, required: true },
   },
   {
     timestamps: true,

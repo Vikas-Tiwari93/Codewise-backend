@@ -1,25 +1,24 @@
-import { Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { updateRecord } from "../db/dbwrapper";
 import { Admin } from "../schemas/admin";
 import { Student } from "../schemas/student";
-import { SUCCESS } from "../constants/http-constants";
+import { SUCCESS, UNAUTHORIZED } from "../constants/http-constants";
+import { secretKey } from "../constants/keys";
+import { Users } from "../schemas/users";
 
 export type TokenPayload = {
   userName: string;
-  isAdmin: boolean;
+  role: string;
 };
 type updatingJwt = {
   userName: string;
   password?: string;
-  isAdmin: boolean;
+  role: string;
 };
-export const generateJwtTokens = (
-  payloadObject: TokenPayload,
-  secretKey: string
-) => {
+export const generateJwtTokens = (payloadObject: TokenPayload) => {
   const authToken = jwt.sign(payloadObject, secretKey, {
-    expiresIn: "15m",
+    expiresIn: "30m",
   });
 
   const refreshToken = jwt.sign(payloadObject, secretKey, {
@@ -32,43 +31,55 @@ export const updatingJwtTokensInDb = async (
   authToken: string,
   query: updatingJwt
 ) => {
-  const { userName, password, isAdmin } = query;
-  const searchQuery = password ? { userName, password } : { userName };
+  const { userName, role } = query;
   const payload = { authToken: authToken };
-  if (isAdmin) {
-    return await updateRecord(Admin, searchQuery, payload);
-  }
-  if (!isAdmin) {
-    return await updateRecord(Student, query, payload);
+  if (role) {
+    return await updateRecord(Users, query, payload);
   }
 };
+// Jwt middleware below
+export interface RequestWithUser extends Request {
+  user?: {
+    userName: string;
+    role: string;
+  };
+}
 
-export const verifyJWT = (token: string, secretKey: string, res: Response) => {
-  let payload: TokenPayload;
-  const user: any = jwt.verify(token, secretKey);
-  try {
-    payload = {
-      userName: user.userName,
-      isAdmin: user.isAdmin,
-    };
-    return payload;
-  } catch (err) {
-    res.status(401).send("Bad credentials");
+export const isAuth = (
+  req: RequestWithUser,
+  res: Response,
+  next: NextFunction
+): void => {
+  const token = req.headers.authorization
+    ? req.headers.authorization.split(" ")[1]
+    : "";
+
+  if (!token) {
+    res.status(UNAUTHORIZED).json({ error: "Unauthorized" });
   }
-};
-export const isJWTExpired = (token: string) => {
-  try {
-    const decoded = jwt.decode(token, { complete: true }) as {
-      payload: JwtPayload;
-    };
+  const decoded = jwt.decode(token, { complete: true }) as {
+    payload: JwtPayload;
+  };
 
-    if (decoded?.payload?.exp) {
-      const expirationTime = new Date(decoded.payload.exp * 1000);
-      const isExpired = expirationTime < new Date() ? false : true;
-      return isExpired;
+  if (decoded?.payload?.exp) {
+    const expirationTime = new Date(decoded.payload.exp * 1000);
+    const isExpired = expirationTime < new Date() ? true : false;
+
+    if (!isExpired) {
+      let payload: TokenPayload;
+      const user: any = jwt.verify(token, secretKey);
+
+      req.user = {
+        userName: user.userName,
+        role: user.role,
+      };
+
+      return next();
+    } else {
+      res.status(UNAUTHORIZED).json({ error: "Unauthorized" });
     }
-    return false;
-  } catch (error) {
-    return false;
+
+    res.status(UNAUTHORIZED).json({ error: "Unauthorized" });
   }
+  res.status(UNAUTHORIZED).json({ error: "Unauthorized" });
 };

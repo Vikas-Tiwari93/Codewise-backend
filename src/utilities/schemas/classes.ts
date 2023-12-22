@@ -28,8 +28,8 @@ const createClassSchema = new mongoose.Schema(
     events: [
       {
         title: { type: String, required: true },
-        details: { type: String, required: true },
-        atDate: { type: String, required: true },
+        isCancelled: { type: Boolean, required: true },
+        atDate: { type: Date, required: true },
       },
     ],
     isActive: { type: Boolean, required: true },
@@ -41,4 +41,4 @@ const createClassSchema = new mongoose.Schema(
 );
 createClassSchema.index({ classId: 1 }, { unique: true });
 createClassSchema.index({ adminId: 1, className: 1 }, { unique: true });
-export const Student = mongoose.model("Student", createClassSchema);
+export const Classes = mongoose.model("Classes", createClassSchema);

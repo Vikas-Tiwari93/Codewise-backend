@@ -15,6 +15,13 @@ const createStudentSchema = new mongoose.Schema(
     isActive: { type: Boolean, required: true },
     authToken: { type: String, required: true },
     Assignments: [],
+    classes: [
+      {
+        adminId: { type: String, required: true, unique: true },
+        classId: { type: String, required: true, unique: true },
+        className: { type: String, required: true },
+      },
+    ],
   },
   {
     timestamps: true,

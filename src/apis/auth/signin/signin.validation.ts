@@ -9,7 +9,7 @@ export const validator = createValidator();
 export const signInSchema = Joi.object({
   userName: Joi.string().required(),
   password: Joi.string().required(),
-  isAdmin: Joi.boolean().required(),
+  role: Joi.string().required(),
 });
 export interface SigninRequestSchema extends ValidatedRequestSchema {
   [ContainerTypes.Body]: SigninBody;
