@@ -8,6 +8,9 @@ export const isPasswordVerified = async (
   password: string,
   dbPassword: string
 ) => {
-  const passwordMatch = await bcrypt.compare(password, dbPassword);
-  return passwordMatch;
+  try {
+    const passwordMatch = await bcrypt.compare(password, dbPassword);
+
+    return passwordMatch;
+  } catch (err) {}
 };

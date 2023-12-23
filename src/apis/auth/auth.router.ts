@@ -15,10 +15,11 @@ import {
   otpValidate,
 } from "./password/passwords.controller";
 import { signUpAdminSchema } from "./signup/signup.validation";
-
+import { isAuth } from "../../utilities/tokenGenerators/jwt";
+// import ends here
 export const AuthRouter = express.Router();
 AuthRouter.post("/signin", validator.body(signInSchema), SigninController);
-AuthRouter.post("/signin/authtoken", generateAuthTokenController);
+AuthRouter.post("/signin/authtoken", isAuth, generateAuthTokenController);
 AuthRouter.post("/signup/uploads", uploadsController);
 AuthRouter.post(
   "/signup/admin",

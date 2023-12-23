@@ -14,29 +14,29 @@ import { SigninRequestSchema } from "./signin.validation";
 import { Admin } from "../../../utilities/schemas/admin";
 import { Student } from "../../../utilities/schemas/student";
 import {
+  RequestWithUser,
   generateJwtTokens,
-  isJWTExpired,
   updatingJwtTokensInDb,
-  verifyJWT,
 } from "../../../utilities/tokenGenerators/jwt";
 import { secretKey } from "../../../utilities/constants/keys";
 import { isPasswordVerified } from "../../../utilities/otherMiddlewares/password";
+import { Users } from "../../../utilities/schemas/users";
 
 export const SigninController = async (
   req: ValidatedRequest<SigninRequestSchema>,
   res: Response
 ) => {
-  const { userName, password, isAdmin } = req.body;
+  const { userName, password, role } = req.body;
 
   try {
-    const { authToken, refreshToken } = generateJwtTokens(
-      { userName, isAdmin },
-      secretKey
-    );
+    const { authToken, refreshToken } = generateJwtTokens({
+      userName,
+      role,
+    });
 
     const user = await updatingJwtTokensInDb(authToken, {
       userName,
-      isAdmin,
+      role,
     });
 
     if (
@@ -57,22 +57,20 @@ export const SigninController = async (
 };
 
 export const generateAuthTokenController = async (
-  req: Request,
+  req: RequestWithUser,
   res: Response
 ) => {
   const { refreshToken } = req.body;
+  const user = req.user;
   try {
-    const user = verifyJWT(refreshToken, secretKey, res);
+    if (user) {
+      const querypayload = { userName: user.userName, role: user.userName };
+      const identifyUser = await getRecordDetails(Users, querypayload);
 
-    if (user && isJWTExpired(refreshToken)) {
-      const querypayload = { userName: user.userName };
-      const identifyUser = user.isAdmin
-        ? await getRecordDetails(Admin, querypayload)
-        : await getRecordDetails(Student, querypayload);
       if (!identifyUser) {
         return res.status(404).send("User not found");
       }
-      const { authToken, refreshToken } = generateJwtTokens(user, secretKey);
+      const { authToken, refreshToken } = generateJwtTokens(user);
       await updatingJwtTokensInDb(authToken, user);
 
       res

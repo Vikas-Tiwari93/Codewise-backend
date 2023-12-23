@@ -51,6 +51,9 @@ export const getAggreateRecords = async <T>(
   return await db_calls.aggreateRecord(model, query);
 };
 
-export const deleteRecord = async <T>(model: Mongoose.Model<T>, query: T) => {
+export const deleteRecord = async <T>(
+  model: Mongoose.Model<T>,
+  query: Mongoose.FilterQuery<T>
+) => {
   return await db_calls.deleteRecord(model, query);
 };

@@ -106,11 +106,12 @@ export const updateRecord = async <T>(
 };
 
 //Delete record
-export const deleteRecord = async <T>(model: Mongoose.Model<T>, id: T) => {
+export const deleteRecord = async <T>(
+  model: Mongoose.Model<T>,
+  query: Mongoose.FilterQuery<T>
+) => {
   try {
-    const resultSet = await model.findOneAndDelete({
-      _id: new Mongoose.Types.ObjectId(""),
-    });
+    const resultSet = await model.findOneAndDelete(query);
     if (!resultSet) {
       return prepareResponse("No records deleted.");
     }
@@ -126,7 +127,6 @@ export const deleteManyRecord = async <T>(
 ) => {
   try {
     const resultSet = await model.deleteMany(query);
-    console.log({ resultSet });
     if (!resultSet) {
       return prepareResponse("No records deleted.");
     }
@@ -158,7 +158,7 @@ export const aggreateRecord = async <T>(
   }
 };
 
-const prepareResponse = <T>(
+export const prepareResponse = <T>(
   message: string,
   hasData?: boolean,
   resultSet?: any

@@ -14,8 +14,8 @@ export const signUpAdminSchema = Joi.object({
   email: Joi.string().required(),
   organisationName: Joi.string().required(),
   organisationId: Joi.string().required(),
-  attachment: Joi.string().required(),
-  isAgreement: Joi.boolean().required(),
+  attachment: Joi.string(),
+  isAgreement: Joi.boolean(),
 });
 export interface SignupAdminRequestSchema extends ValidatedRequestSchema {
   [ContainerTypes.Body]: {
@@ -25,8 +25,7 @@ export interface SignupAdminRequestSchema extends ValidatedRequestSchema {
     organisationName: string;
     email: string;
     organisationId: string;
-    attachment: string;
-    isAgreement: boolean;
+    attachment?: string;
     userName: string;
   };
 }
