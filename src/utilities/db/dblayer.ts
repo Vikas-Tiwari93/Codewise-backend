@@ -158,7 +158,7 @@ export const aggreateRecord = async <T>(
   }
 };
 
-const prepareResponse = <T>(
+export const prepareResponse = <T>(
   message: string,
   hasData?: boolean,
   resultSet?: any

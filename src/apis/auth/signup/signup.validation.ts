@@ -16,7 +16,6 @@ export const signUpAdminSchema = Joi.object({
   organisationId: Joi.string().required(),
   attachment: Joi.string(),
   isAgreement: Joi.boolean(),
-  role: Joi.string().required(),
 });
 export interface SignupAdminRequestSchema extends ValidatedRequestSchema {
   [ContainerTypes.Body]: {
@@ -28,6 +27,5 @@ export interface SignupAdminRequestSchema extends ValidatedRequestSchema {
     organisationId: string;
     attachment?: string;
     userName: string;
-    role: string;
   };
 }

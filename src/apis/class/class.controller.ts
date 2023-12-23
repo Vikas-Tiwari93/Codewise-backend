@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import {
   BAD_REQUEST,
   NOT_FOUND,
@@ -6,7 +7,7 @@ import {
   SUCCESS,
   UNAUTHORIZED,
 } from "../../utilities/constants/http-constants";
-import { secretKey } from "../../utilities/constants/keys";
+
 import { RequestWithUser } from "../../utilities/tokenGenerators/jwt";
 import {
   createSingleRecord,
@@ -18,6 +19,9 @@ import { v4 as uuidv4 } from "uuid";
 import { deleteManyRecord } from "../../utilities/db/dblayer";
 import { Student } from "../../utilities/schemas/student";
 import { Admin } from "../../utilities/schemas/admin";
+import { deleteManyRecordWithTransactions } from "../../utilities/transations/dblayer";
+import { executeOperationsInTransaction } from "../../utilities/transations/transations.methods";
+
 type ClassBody = {
   className: string;
   adminId: string;
@@ -129,10 +133,21 @@ export const deleteClass = async (req: RequestWithUser, res: Response) => {
 
   try {
     if (user) {
-      const result = await deleteManyRecord(Classes, { adminId, classId });
-      await deleteManyRecord(Student, { classId });
-      await deleteManyRecord(Admin, { classId });
-      result.hasData
+      const deleteOperations = [
+        async (session: mongoose.mongo.ClientSession) =>
+          await deleteManyRecordWithTransactions(
+            Classes,
+            { adminId, classId },
+            session
+          ),
+        async (session: mongoose.mongo.ClientSession) =>
+          await deleteManyRecordWithTransactions(Student, { classId }, session),
+        async (session: mongoose.mongo.ClientSession) =>
+          await deleteManyRecordWithTransactions(Admin, { classId }, session),
+      ];
+      const result = await executeOperationsInTransaction(deleteOperations);
+
+      result && result[0].hasData
         ? res.status(SUCCESS).json({ result, message: "Class deleted" })
         : res.status(BAD_REQUEST).json({ message: "Bad delete request" });
     } else {

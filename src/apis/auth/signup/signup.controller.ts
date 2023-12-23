@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
-
-import { SERVER_ERROR } from "../../../utilities/constants/http-constants";
+import mongoose from "mongoose";
+import {
+  BAD_REQUEST,
+  SERVER_ERROR,
+} from "../../../utilities/constants/http-constants";
 
 import { createSingleRecord } from "../../../utilities/db/dblayer";
 import { Admin } from "../../../utilities/schemas/admin";
@@ -17,6 +20,8 @@ import {
 } from "../../../utilities/initialservices/initialServices";
 import { encryptPassword } from "../../../utilities/otherMiddlewares/password";
 import { Users } from "../../../utilities/schemas/users";
+import { createSingleRecordWithTransactions } from "../../../utilities/transations/dblayer";
+import { executeOperationsInTransaction } from "../../../utilities/transations/transations.methods";
 export const SignupControllerAdmin = async (
   req: ValidatedRequest<SignupAdminRequestSchema>,
   res: Response
@@ -29,9 +34,7 @@ export const SignupControllerAdmin = async (
     organisationId,
     email,
     attachment,
-
     userName,
-    role,
   } = req.body;
 
   const { authToken, refreshToken } = generateJwtTokens({
@@ -45,21 +48,45 @@ export const SignupControllerAdmin = async (
     name,
     userName,
     password: await encryptPassword(password),
-    role,
+    role: "admin",
     organisation: [{ orgName: organisationName, orgId: organisationId }],
     attachment,
     isActive: true,
     isDeleted: false,
     authToken,
   };
+  const adminPayload = {
+    email,
+    name,
+    userId: userName,
+    organisationName,
+    organisationId,
+    isActive: true,
+    isDeleted: false,
+  };
   try {
     const isAdminRegistered = await getRecordDetails(Users, {
       userName,
     });
     if (!isAdminRegistered.hasData) {
-      const admin = await createSingleRecord(Users, payload);
-
-      res.json({ admin, message: "User signed up successfully" });
+      let createUserOperations = [
+        async (session: mongoose.mongo.ClientSession) =>
+          await createSingleRecordWithTransactions(Users, payload, session),
+        async (session: mongoose.mongo.ClientSession) =>
+          await createSingleRecordWithTransactions(
+            Admin,
+            adminPayload,
+            session
+          ),
+      ];
+      const admin = await executeOperationsInTransaction(createUserOperations);
+      const adminId =
+        admin && admin.length > 1 ? admin[1].resultSet.userId : null;
+      if (adminId) {
+        res.json({ adminId, message: "User signed up successfully" });
+      } else {
+        res.status(BAD_REQUEST).json({ message: "Bad delete request" });
+      }
     } else {
       res.json({ message: "Already have a user with these credentials" });
     }
@@ -80,7 +107,6 @@ export const SignupControllerStudent = async (
     email,
     attachment,
     userName,
-    role,
   } = req.body;
 
   const { authToken, refreshToken } = generateJwtTokens({
@@ -94,25 +120,46 @@ export const SignupControllerStudent = async (
     name,
     userName,
     password: await encryptPassword(password),
-    role,
+    role: "student",
     organisation: [{ orgName: organisationName, orgId: organisationId }],
     attachment,
-
     isActive: true,
     isDeleted: false,
     authToken,
+  };
+  const studentPayload = {
+    email,
+    name,
+    userName,
+    organisation: [{ orgName: organisationName, orgId: organisationId }],
+    isActive: true,
+    isDeleted: false,
   };
   try {
     const isStudentRegistered = await getRecordDetails(Users, {
       userName,
       password,
     });
-    console.log(isStudentRegistered);
-    if (!isStudentRegistered.hasData) {
-      const admin = await createSingleRecord(Users, payload);
-      console.log({ admin });
 
-      res.json({ message: "User signed up successfully" });
+    if (!isStudentRegistered.hasData) {
+      console.log("wtf");
+      let createUserOperations = [
+        async (session: mongoose.mongo.ClientSession) =>
+          await createSingleRecordWithTransactions(Users, payload, session),
+        async (session: mongoose.mongo.ClientSession) =>
+          await createSingleRecordWithTransactions(
+            Student,
+            studentPayload,
+            session
+          ),
+      ];
+      const admin = await executeOperationsInTransaction(createUserOperations);
+      const adminId = admin ? admin[1].resultSet[0].userName : null;
+      if (adminId) {
+        res.json({ adminId, message: "User signed up successfully" });
+      } else {
+        res.status(BAD_REQUEST).json({ message: "Bad request" });
+      }
     } else {
       res.json({ message: "Already have a user with these credentials" });
     }

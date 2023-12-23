@@ -1,6 +1,11 @@
-import mongoose from "mongoose";
-const executeOperationsInTransaction = async (
-  operations: [(session: mongoose.mongo.ClientSession) => void]
+import mongoose from "../db/index";
+
+export const executeOperationsInTransaction = async (
+  operations: ((session: mongoose.mongo.ClientSession) => Promise<{
+    hasData: boolean;
+    message: string;
+    resultSet: any;
+  }>)[]
 ) => {
   try {
     const session = await mongoose.startSession();

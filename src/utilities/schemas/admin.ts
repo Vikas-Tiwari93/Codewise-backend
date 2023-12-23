@@ -3,7 +3,7 @@ import mongoose, { Model } from "mongoose";
 const adminSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-    profileImg: { type: String, required: true },
+    profileImg: { type: String },
     userId: { type: String, required: true },
     organisationId: { type: String, required: true },
     organisationName: { type: String, required: true },
@@ -39,7 +39,7 @@ const adminSchema = new mongoose.Schema(
         seen: { type: Boolean, required: true },
       },
     ],
-    isDisabled: { type: Boolean, required: true },
+    isActive: { type: Boolean, required: true },
     isDeleted: { type: Boolean, required: true },
   },
   {
