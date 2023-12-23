@@ -19,7 +19,11 @@ import { v4 as uuidv4 } from "uuid";
 import { deleteManyRecord } from "../../utilities/db/dblayer";
 import { Student } from "../../utilities/schemas/student";
 import { Admin } from "../../utilities/schemas/admin";
-import { deleteManyRecordWithTransactions } from "../../utilities/transations/dblayer";
+import {
+  createSingleRecordWithTransactions,
+  deleteManyRecordWithTransactions,
+  updateRecordWithTransactions,
+} from "../../utilities/transations/dblayer";
 import { executeOperationsInTransaction } from "../../utilities/transations/transations.methods";
 
 type ClassBody = {
@@ -63,26 +67,41 @@ export const addNewClass = async (req: RequestWithUser, res: Response) => {
   console.log(user);
   try {
     if (user) {
-      const newClass = await createSingleRecord(Classes, {
-        className,
-        adminId,
-        classId,
-        isActive: true,
-        isDeleted: false,
-      });
       let newClassAdmin = {
         className,
         adminId,
         classId,
       };
-      await updateRecord(
-        Admin,
-        { adminId },
-        { $push: { classes: newClassAdmin } }
+      let createClassOperations = [
+        async (session: mongoose.mongo.ClientSession) =>
+          await createSingleRecordWithTransactions(
+            Classes,
+            {
+              className,
+              adminId,
+              classId,
+              isActive: true,
+              isDeleted: false,
+            },
+            session
+          ),
+        async (session: mongoose.mongo.ClientSession) =>
+          await updateRecordWithTransactions(
+            Admin,
+            { adminId },
+            { $push: { classes: newClassAdmin } },
+            session
+          ),
+      ];
+
+      const newClass = await executeOperationsInTransaction(
+        createClassOperations
       );
 
-      if (newClass.hasData) {
-        res.status(SUCCESS).json({ newClass, message: "class added" });
+      if (newClass && newClass[0]?.hasData) {
+        res
+          .status(SUCCESS)
+          .json({ newClass: newClass[0], message: "class added" });
       } else {
         res.status(BAD_REQUEST).json({ message: "error in while class" });
       }
@@ -103,20 +122,35 @@ export const updateCLassDetails = async (
   const user = req.user;
   try {
     if (user) {
-      const result = await updateRecord(Classes, { classId }, { className });
-      await updateRecord(
-        Admin,
-        { adminId, "classes.classId": classId },
-        { $set: { "classes.$.className": newClassName } }
-      );
-      await updateRecord(
-        Student,
-        { adminId, "classes.classId": classId },
-        { $set: { "classes.$.className": newClassName } }
+      let updateClassOperations = [
+        async (session: mongoose.mongo.ClientSession) =>
+          await updateRecordWithTransactions(
+            Admin,
+            { adminId, "classes.classId": classId },
+            { $set: { "classes.$.className": newClassName } },
+            session
+          ),
+        async (session: mongoose.mongo.ClientSession) =>
+          await updateRecordWithTransactions(
+            Classes,
+            { classId },
+            { className },
+            session
+          ),
+        async (session: mongoose.mongo.ClientSession) =>
+          await updateRecordWithTransactions(
+            Student,
+            { adminId, "classes.classId": classId },
+            { $set: { "classes.$.className": newClassName } },
+            session
+          ),
+      ];
+      const updatedClass = await executeOperationsInTransaction(
+        updateClassOperations
       );
 
-      result.hasData
-        ? res.status(SUCCESS).json({ result })
+      updatedClass && updatedClass[1].hasData
+        ? res.status(SUCCESS).json({ updatedClass: updatedClass[1] })
         : res.status(BAD_REQUEST).json({ message: "Coundn't find class" });
     } else {
       res.status(UNAUTHORIZED).json({ message: "credentials don't match" });

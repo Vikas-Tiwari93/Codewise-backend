@@ -81,7 +81,7 @@ export const SignupControllerAdmin = async (
       ];
       const admin = await executeOperationsInTransaction(createUserOperations);
       const adminId =
-        admin && admin.length > 1 ? admin[1].resultSet.userId : null;
+        admin && admin.length > 1 ? admin[1].resultSet[0].userId : null;
       if (adminId) {
         res.json({ adminId, message: "User signed up successfully" });
       } else {
@@ -153,10 +153,12 @@ export const SignupControllerStudent = async (
             session
           ),
       ];
-      const admin = await executeOperationsInTransaction(createUserOperations);
-      const adminId = admin ? admin[1].resultSet[0].userName : null;
-      if (adminId) {
-        res.json({ adminId, message: "User signed up successfully" });
+      const student = await executeOperationsInTransaction(
+        createUserOperations
+      );
+      const studentId = student ? student[1].resultSet[0].userName : null;
+      if (studentId) {
+        res.json({ studentId, message: "User signed up successfully" });
       } else {
         res.status(BAD_REQUEST).json({ message: "Bad request" });
       }
